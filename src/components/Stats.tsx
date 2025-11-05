@@ -19,6 +19,28 @@ interface StatsProps {
 
 type StatView = 'day' | 'week' | 'month';
 
+const calculateTotalWalkMinutes = (activities: PuppyActivity[]): number => {
+  let totalMinutes = 0;
+  const sortedActivities = [...activities].sort((a, b) => new Date(a.activity_time).getTime() - new Date(b.activity_time).getTime());
+
+  sortedActivities.forEach((activity, index) => {
+    if (activity.activity_type === 'walk') {
+      if (activity.end_time) {
+        const duration = (new Date(activity.end_time).getTime() - new Date(activity.activity_time).getTime()) / (1000 * 60);
+        totalMinutes += duration;
+      } else {
+        const nextActivity = sortedActivities[index + 1];
+        if (nextActivity) {
+          const duration = (new Date(nextActivity.activity_time).getTime() - new Date(activity.activity_time).getTime()) / (1000 * 60);
+          totalMinutes += duration;
+        }
+      }
+    }
+  });
+
+  return Math.round(totalMinutes);
+};
+
 const getLastSleepSession = (activities: PuppyActivity[]) => {
   const sortedActivities = [...activities].sort((a, b) => new Date(b.activity_time).getTime() - new Date(a.activity_time).getTime());
   
@@ -143,7 +165,9 @@ const DayStats = ({ activities }: DayStatsProps) => {
   const lastMealTime = getLastTime('meal');
 
   const walkCount = getCount('walk');
-  const lastWalkTime = getLastTime('walk');
+  const totalWalkMinutes = calculateTotalWalkMinutes(todayActivities);
+  const walkHours = Math.floor(totalWalkMinutes / 60);
+  const walkRemainingMinutes = totalWalkMinutes % 60;
 
   const lastSleep = getLastSleepSession(activities);
   const napMinutes = calculateNapMinutes(todayActivities);
@@ -188,8 +212,8 @@ const DayStats = ({ activities }: DayStatsProps) => {
         <StatCard 
             icon={<Footprints size={32} className="text-green-800" />} 
             title="Walks" 
-            value={walkCount > 0 ? `${walkCount} times` : 'None yet'}
-            footer={lastWalkTime ? `Last walk at ${lastWalkTime}`: ''}
+            value={`${walkHours > 0 ? `${walkHours}h ` : ''}${walkRemainingMinutes}m total`}
+            footer={walkCount > 0 ? `${walkCount} walks today` : 'No walks yet'}
             color="bg-green-100 text-green-900"
         />
         {lastSleep && (
@@ -259,6 +283,8 @@ const PeriodStats = ({ activities, period }: PeriodStatsProps) => {
     const pooCount = periodActivities.filter(a => a.activity_type === 'poo').length;
     const mealCount = periodActivities.filter(a => a.activity_type === 'meal').length;
     const walkCount = periodActivities.filter(a => a.activity_type === 'walk').length;
+    const totalWalkMinutes = calculateTotalWalkMinutes(periodActivities);
+    const avgWalkMinutes = totalWalkMinutes / daysInPeriod;
 
     return (
         <div className="space-y-4 p-4">
@@ -286,6 +312,7 @@ const PeriodStats = ({ activities, period }: PeriodStatsProps) => {
                 icon={<Footprints size={32} className="text-green-800" />}
                 title="Avg Walks"
                 value={`${(walkCount / daysInPeriod).toFixed(1)} / day`}
+                footer={`${Math.round(avgWalkMinutes)} min avg duration`}
                 color="bg-green-100 text-green-900"
             />
         </div>
