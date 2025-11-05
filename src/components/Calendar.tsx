@@ -4,9 +4,11 @@ interface CalendarProps {
   selectedDate: Date;
   onDateSelect: (date: Date) => void;
   activityDates: Set<string>;
+  onViewDay: (date: Date) => void;
+  onAddActivityForDate: (date: Date) => void;
 }
 
-export function Calendar({ selectedDate, onDateSelect, activityDates }: CalendarProps) {
+export function Calendar({ selectedDate, onDateSelect, activityDates, onViewDay, onAddActivityForDate }: CalendarProps) {
   const currentMonth = selectedDate.getMonth();
   const currentYear = selectedDate.getFullYear();
 
@@ -59,6 +61,8 @@ export function Calendar({ selectedDate, onDateSelect, activityDates }: Calendar
   const handleDayClick = (day: number) => {
     onDateSelect(new Date(currentYear, currentMonth, day));
   };
+  
+  const hasActivityOnSelectedDate = hasActivity(selectedDate.getDate());
 
   const days = [];
   for (let i = 0; i < startingDayOfWeek; i++) {
@@ -76,9 +80,9 @@ export function Calendar({ selectedDate, onDateSelect, activityDates }: Calendar
         onClick={() => handleDayClick(day)}
         className={`aspect-square rounded-lg font-medium transition-all relative ${
           isSelectedDay
-            ? 'bg-blue-600 text-white shadow-md'
+            ? 'bg-pink-600 text-white shadow-md'
             : isCurrentDay
-            ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+            ? 'bg-pink-100 text-pink-600 hover:bg-pink-200'
             : hasActivityDay
             ? 'bg-green-50 text-gray-900 hover:bg-green-100'
             : 'text-gray-700 hover:bg-gray-100'
@@ -132,15 +136,22 @@ export function Calendar({ selectedDate, onDateSelect, activityDates }: Calendar
 
       <div className="grid grid-cols-7 gap-2">{days}</div>
 
-      <div className="mt-4 flex items-center gap-4 text-xs text-gray-600">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-blue-600 rounded"></div>
-          <span>Selected</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-50 border border-green-200 rounded"></div>
-          <span>Has activities</span>
-        </div>
+      <div className="mt-6 text-center">
+        {hasActivityOnSelectedDate ? (
+          <button
+            onClick={() => onViewDay(selectedDate)}
+            className="bg-pink-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-pink-700 transition-colors"
+          >
+            View Activities for {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </button>
+        ) : (
+          <button
+            onClick={() => onAddActivityForDate(selectedDate)}
+            className="bg-pink-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-pink-700 transition-colors"
+          >
+            Add Activity for {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+          </button>
+        )}
       </div>
     </div>
   );

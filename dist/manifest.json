@@ -1,0 +1,20 @@
+{
+  "name": "The June-bug Diaries",
+  "short_name": "June's Diary",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fff",
+  "description": "A simple app to track your puppy's daily activities.",
+  "icons": [
+    {
+      "src": "/june.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/june.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

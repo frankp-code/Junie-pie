@@ -1,121 +1,132 @@
-import { useState } from 'react';
-import { Plus } from 'lucide-react';
-import { ActivityType } from '../lib/supabase';
+import { useEffect, useState } from 'react';
+import { ActivityType } from '../lib/types';
+import { ArrowLeft } from 'lucide-react';
 
 interface ActivityFormProps {
   onSubmit: (activityType: ActivityType, activityTime: string, notes: string) => Promise<void>;
+  onBack: () => void;
+  date: Date | null;
 }
 
 const activityOptions: { value: ActivityType; label: string; emoji: string }[] = [
-  { value: 'meal', label: 'Meal', emoji: '🍖' },
   { value: 'wee', label: 'Wee', emoji: '💧' },
   { value: 'poo', label: 'Poo', emoji: '💩' },
+  { value: 'meal', label: 'Meal', emoji: '🍖' },
   { value: 'walk', label: 'Walk', emoji: '🦮' },
-  { value: 'play', label: 'Playtime', emoji: '🎾' },
+  { value: 'play', label: 'Play', emoji: '🎾' },
+  { value: 'training', label: 'Training', emoji: '🎓' },
   { value: 'sleep', label: 'Sleep', emoji: '😴' },
   { value: 'wake', label: 'Wake', emoji: '☀️' },
-  { value: 'training', label: 'Training', emoji: '🎓' },
   { value: 'other', label: 'Other', emoji: '📝' },
 ];
 
-export function ActivityForm({ onSubmit }: ActivityFormProps) {
-  const [activityType, setActivityType] = useState<ActivityType>('meal');
+export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
+  const [activityType, setActivityType] = useState<ActivityType>('wee');
   const [activityTime, setActivityTime] = useState(() => {
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    return now.toISOString().slice(0, 16);
+    const targetDate = date ? new Date(date) : new Date();
+    targetDate.setMinutes(targetDate.getMinutes() - targetDate.getTimezoneOffset());
+    if (!date) {
+        // If it's a new activity for today, set it to the current time.
+        return targetDate.toISOString().slice(0, 16);
+    }
+    // If it's for a past date, set it to the beginning of that day.
+    targetDate.setHours(9, 0, 0, 0);
+    return targetDate.toISOString().slice(0, 16);
   });
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    const targetDate = date ? new Date(date) : new Date();
+    targetDate.setMinutes(targetDate.getMinutes() - targetDate.getTimezoneOffset());
+    if (date) {
+        targetDate.setHours(9, 0, 0, 0);
+    }
+    setActivityTime(targetDate.toISOString().slice(0, 16));
+}, [date]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (activityType === 'other' && notes.trim() === '') {
-      alert('Please enter a note when selecting "Other"');
+      alert('Please enter a description for the "Other" activity.');
       return;
     }
-
     setIsSubmitting(true);
     try {
       await onSubmit(activityType, activityTime, notes);
-      setNotes('');
-      const now = new Date();
-      now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-      setActivityTime(now.toISOString().slice(0, 16));
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-sm p-6 space-y-4">
-      <h2 className="text-xl font-semibold text-gray-800 mb-4">Log Activity</h2>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Activity Type
-        </label>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {activityOptions.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => setActivityType(option.value)}
-              className={`p-3 rounded-lg border-2 transition-all ${
-                activityType === option.value
-                  ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              <div className="text-2xl mb-1">{option.emoji}</div>
-              <div className="text-xs font-medium">{option.label}</div>
+    <div>
+        <div className="flex justify-between items-center mb-6">
+            <button onClick={onBack} className="p-2 -ml-2 text-gray-600 hover:text-gray-900">
+                <ArrowLeft size={24} />
             </button>
-          ))}
+            <h1 className="text-xl font-bold text-gray-800">Add New Activity</h1>
+            <button 
+                type="submit" 
+                form="activity-form" 
+                disabled={isSubmitting}
+                className="px-4 py-2 bg-pink-600 text-white rounded-lg font-semibold text-sm hover:bg-pink-700 disabled:bg-pink-400"
+            >
+                {isSubmitting ? 'Adding...' : 'Add'}
+            </button>
         </div>
-      </div>
 
-      <div>
-        <label htmlFor="activityTime" className="block text-sm font-medium text-gray-700 mb-2">
-          Time
-        </label>
-        <input
-          type="datetime-local"
-          id="activityTime"
-          value={activityTime}
-          onChange={(e) => setActivityTime(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          required
-        />
-      </div>
+        <form id="activity-form" onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Activity Type</label>
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {activityOptions.map((option) => (
+                        <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setActivityType(option.value)}
+                        className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all text-center ${
+                            activityType === option.value
+                            ? 'border-pink-500 bg-pink-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                        >
+                        <span className="text-2xl">{option.emoji}</span>
+                        <span className="text-xs font-medium text-gray-800 mt-1">{option.label}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
 
-      <div>
-        <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-          {activityType === 'other' ? 'Description' : 'Notes'} {activityType === 'other' && <span className="text-red-500">*</span>}
-        </label>
-        <textarea
-          id="notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder={activityType === 'other' ? 'Please describe the activity...' : 'Add any additional details...'}
-          rows={3}
-          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:border-transparent resize-none ${
-            activityType === 'other' && notes.trim() === ''
-              ? 'border-red-300 focus:ring-red-500'
-              : 'border-gray-300 focus:ring-blue-500'
-          }`}
-          required={activityType === 'other'}
-        />
-      </div>
+            <div>
+                <label htmlFor="activityTime" className="text-sm font-medium text-gray-700 mb-1 block">Time</label>
+                <input
+                    type="datetime-local"
+                    id="activityTime"
+                    value={activityTime}
+                    onChange={(e) => setActivityTime(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-transparent bg-white text-center"
+                    required
+                />
+            </div>
 
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:bg-blue-400 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-      >
-        <Plus size={20} />
-        {isSubmitting ? 'Logging...' : 'Log Activity'}
-      </button>
-    </form>
+            <div>
+                <label htmlFor="notes" className="text-sm font-medium text-gray-700 mb-1 block">Notes</label>
+                <textarea
+                    id="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={activityType === 'other' ? 'A description is required...' : 'Optional notes...'}
+                    rows={3}
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:border-transparent resize-none bg-white ${
+                        activityType === 'other' && isSubmitting
+                        ? 'border-red-300 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-pink-500'
+                    }`}
+                    required={activityType === 'other'}
+                />
+            </div>
+        </form>
+    </div>
   );
 }
