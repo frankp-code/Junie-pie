@@ -42,21 +42,27 @@ const calculateTotalWalkMinutes = (activities: PuppyActivity[]): number => {
 };
 
 const getLastSleepSession = (activities: PuppyActivity[]) => {
-  const sortedActivities = [...activities].sort((a, b) => new Date(b.activity_time).getTime() - new Date(a.activity_time).getTime());
-  
-  const lastWake = sortedActivities.find(a => a.activity_type === 'wake');
-  if (!lastWake) return null;
+  const sortedActivitiesDesc = [...activities].sort((a, b) => new Date(b.activity_time).getTime() - new Date(a.activity_time).getTime());
+  const lastSleep = sortedActivitiesDesc.find(a => a.activity_type === 'sleep');
 
-  const lastWakeTime = new Date(lastWake.activity_time).getTime();
+  if (!lastSleep) return null;
 
-  const correspondingSleep = sortedActivities.find(a => 
-    a.activity_type === 'sleep' && new Date(a.activity_time).getTime() < lastWakeTime
-  );
+  const sleepTime = new Date(lastSleep.activity_time);
+  let wakeTime: Date | null = null;
 
-  if (!correspondingSleep) return null;
-
-  const sleepTime = new Date(correspondingSleep.activity_time);
-  const wakeTime = new Date(lastWake.activity_time);
+  if (lastSleep.end_time) {
+    wakeTime = new Date(lastSleep.end_time);
+  } else {
+    const sortedActivitiesAsc = [...activities].sort((a, b) => new Date(a.activity_time).getTime() - new Date(b.activity_time).getTime());
+    const sleepIndex = sortedActivitiesAsc.findIndex(a => a.id === lastSleep.id);
+    const nextActivity = sortedActivitiesAsc[sleepIndex + 1];
+    
+    if (nextActivity) {
+      wakeTime = new Date(nextActivity.activity_time);
+    } else {
+      return null; // Sleep is ongoing or the last activity
+    }
+  }
 
   const durationMs = wakeTime.getTime() - sleepTime.getTime();
   const totalMinutes = Math.floor(durationMs / (1000 * 60));
@@ -68,7 +74,7 @@ const getLastSleepSession = (activities: PuppyActivity[]) => {
   if (minutes > 0) duration += `${minutes}m`;
 
   return {
-    duration: duration.trim(),
+    duration: duration.trim() || '0m',
     sleepTime: sleepTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
     wakeTime: wakeTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
   };
@@ -86,20 +92,18 @@ const calculateNapMinutes = (activities: PuppyActivity[]) => {
   
       if (activity.activity_type === 'sleep') {
         const sleepTime = new Date(activity.activity_time);
-        
-        let wakeActivity = null;
-        for (let j = i + 1; j < sortedActivities.length; j++) {
-          if (sortedActivities[j].activity_type === 'wake') {
-            wakeActivity = sortedActivities[j];
-            break;
-          }
-          if (sortedActivities[j].activity_type === 'sleep') {
-            break;
-          }
+        let wakeTime: Date | null = null;
+
+        if (activity.end_time) {
+            wakeTime = new Date(activity.end_time);
+        } else {
+            const nextActivity = sortedActivities[i + 1];
+            if (nextActivity && nextActivity.activity_type !== 'sleep') {
+                wakeTime = new Date(nextActivity.activity_time);
+            }
         }
   
-        if (wakeActivity) {
-          const wakeTime = new Date(wakeActivity.activity_time);
+        if (wakeTime) {
           if (sleepTime.toDateString() === wakeTime.toDateString()) {
             const hour = wakeTime.getHours();
             if (hour >= 7 && hour < 22) { // Naps are between 7 AM and 10 PM
