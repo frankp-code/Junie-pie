@@ -6,11 +6,13 @@ import { ActivityList } from '@/components/ActivityList';
 import { Stats } from '@/components/Stats';
 import { Calendar } from '@/components/Calendar';
 import { SplashScreen } from '@/components/SplashScreen';
+import { QuickLog } from '@/components/QuickLog';
 import { ActivityType, PuppyActivity } from '@/lib/types';
 import { Plus, List, LayoutDashboard, Calendar as CalendarIcon, Settings as SettingsIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationDialog from '@/components/ConfirmationDialog.tsx';
 import Settings from '@/components/Settings';
+import '@/dark-theme.css';
 
 type NavView = 'timeline' | 'add' | 'stats' | 'calendar' | 'settings';
 
@@ -33,12 +35,17 @@ function App() {
     onConfirm: () => void;
     onCancel: () => void;
   } | null>(null);
+  const [theme, setTheme] = useState('junie');
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchActivities();
     }
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    document.body.className = theme === 'dark' ? 'dark-theme' : '';
+  }, [theme]);
 
   const fetchActivities = async () => {
     setLoading(true);
@@ -155,6 +162,30 @@ function App() {
     }
   };
 
+  const handleQuickLog = async (activityType: ActivityType) => {
+    const ongoingWalk = activities.find(
+      (a) => a.activity_type === 'walk' && !a.end_time
+    );
+
+    const newActivity: any = {
+      activity_type: activityType,
+      activity_time: Timestamp.now(),
+      created_at: Timestamp.now(),
+      notes: 'Quick Log',
+    };
+
+    if (ongoingWalk && (activityType === 'wee' || activityType === 'poo')) {
+      newActivity.parent_activity_id = ongoingWalk.id;
+    }
+
+    try {
+      await addDoc(collection(db, 'puppy_activities'), newActivity);
+      await fetchActivities();
+    } catch (error) {
+      console.error('Error quick logging activity:', error);
+    }
+  };
+
   const handleDeleteActivity = async (id: string) => {
     try {
       const activityDoc = doc(db, 'puppy_activities', id);
@@ -200,12 +231,17 @@ function App() {
           {(() => {
             switch (view) {
               case 'timeline':
-                return <ActivityList 
-                          activities={filteredActivities} 
-                          onDelete={handleDeleteActivity} 
-                          timelineDate={timelineDate}
-                          onClearTimelineDate={() => setTimelineDate(null)}
-                        />;
+                return (
+                  <>
+                    <QuickLog onQuickLog={handleQuickLog} />
+                    <ActivityList 
+                      activities={filteredActivities} 
+                      onDelete={handleDeleteActivity} 
+                      timelineDate={timelineDate}
+                      onClearTimelineDate={() => setTimelineDate(null)}
+                    />
+                  </>
+                );
               case 'add':
                 return <ActivityForm 
                           onSubmit={handleAddActivity} 
@@ -230,7 +266,7 @@ function App() {
                   </div>
                 );
               case 'settings':
-                return <Settings />;
+                return <Settings theme={theme} setTheme={setTheme} />;
               default:
                 return <ActivityList 
                           activities={activities} 
@@ -247,7 +283,7 @@ function App() {
 
   if (loading && isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-.center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-600">Loading June's diary...</p>
         </div>
