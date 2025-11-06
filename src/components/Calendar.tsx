@@ -1,16 +1,32 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
 
 interface CalendarProps {
-  selectedDate: Date;
+  selectedDate: Date | null;
   onDateSelect: (date: Date) => void;
   activityDates: Set<string>;
   onViewDay: (date: Date) => void;
   onAddActivityForDate: (date: Date) => void;
+  currentMonth?: Date;
+  setCurrentMonth?: (date: Date) => void;
 }
 
-export function Calendar({ selectedDate, onDateSelect, activityDates, onViewDay, onAddActivityForDate }: CalendarProps) {
-  const currentMonth = selectedDate.getMonth();
-  const currentYear = selectedDate.getFullYear();
+export function Calendar({ 
+  selectedDate, 
+  onDateSelect, 
+  activityDates, 
+  onViewDay, 
+  onAddActivityForDate, 
+  currentMonth: externalCurrentMonth,
+  setCurrentMonth: setExternalCurrentMonth
+}: CalendarProps) {
+  const [internalCurrentMonth, setInternalCurrentMonth] = useState(selectedDate || new Date());
+
+  const currentMonthDate = externalCurrentMonth || internalCurrentMonth;
+  const setCurrentMonthDate = setExternalCurrentMonth || setInternalCurrentMonth;
+
+  const currentMonth = currentMonthDate.getMonth();
+  const currentYear = currentMonthDate.getFullYear();
 
   const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
   const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
@@ -25,15 +41,17 @@ export function Calendar({ selectedDate, onDateSelect, activityDates, onViewDay,
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const goToPreviousMonth = () => {
-    onDateSelect(new Date(currentYear, currentMonth - 1, 1));
+    setCurrentMonthDate(new Date(currentYear, currentMonth - 1, 1));
   };
 
   const goToNextMonth = () => {
-    onDateSelect(new Date(currentYear, currentMonth + 1, 1));
+    setCurrentMonthDate(new Date(currentYear, currentMonth + 1, 1));
   };
 
   const goToToday = () => {
-    onDateSelect(new Date());
+    const today = new Date();
+    onDateSelect(today);
+    setCurrentMonthDate(today);
   };
 
   const isToday = (day: number) => {
@@ -46,6 +64,7 @@ export function Calendar({ selectedDate, onDateSelect, activityDates, onViewDay,
   };
 
   const isSelected = (day: number) => {
+    if (!selectedDate) return false;
     return (
       day === selectedDate.getDate() &&
       currentMonth === selectedDate.getMonth() &&
@@ -62,7 +81,7 @@ export function Calendar({ selectedDate, onDateSelect, activityDates, onViewDay,
     onDateSelect(new Date(currentYear, currentMonth, day));
   };
   
-  const hasActivityOnSelectedDate = hasActivity(selectedDate.getDate());
+  const hasActivityOnSelectedDate = selectedDate && hasActivity(selectedDate.getDate());
 
   const days = [];
   for (let i = 0; i < startingDayOfWeek; i++) {
@@ -71,7 +90,8 @@ export function Calendar({ selectedDate, onDateSelect, activityDates, onViewDay,
 
   for (let day = 1; day <= daysInMonth; day++) {
     const isCurrentDay = isToday(day);
-    const isSelectedDay = isSelected(day);
+    const dayDate = new Date(currentYear, currentMonth, day);
+    const isSelectedDay = selectedDate ? isSelected(day) : activityDates.has(dayDate.toDateString());
     const hasActivityDay = hasActivity(day);
 
     days.push(
@@ -83,7 +103,7 @@ export function Calendar({ selectedDate, onDateSelect, activityDates, onViewDay,
             ? 'bg-pink-600 text-white shadow-md'
             : isCurrentDay
             ? 'bg-pink-100 text-pink-600 hover:bg-pink-200'
-            : hasActivityDay
+            : hasActivityDay && !selectedDate // Highlight activity days only when there is no single selected date
             ? 'bg-green-50 text-gray-900 hover:bg-green-100'
             : 'text-gray-700 hover:bg-gray-100'
         }`}
@@ -136,23 +156,25 @@ export function Calendar({ selectedDate, onDateSelect, activityDates, onViewDay,
 
       <div className="grid grid-cols-7 gap-2">{days}</div>
 
-      <div className="mt-6 text-center">
-        {hasActivityOnSelectedDate ? (
-          <button
-            onClick={() => onViewDay(selectedDate)}
-            className="bg-pink-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-pink-700 transition-colors"
-          >
-            View Activities for {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </button>
-        ) : (
-          <button
-            onClick={() => onAddActivityForDate(selectedDate)}
-            className="bg-pink-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-pink-700 transition-colors"
-          >
-            Add Activity for {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-          </button>
-        )}
-      </div>
+      {selectedDate && (
+        <div className="mt-6 text-center">
+          {hasActivityOnSelectedDate ? (
+            <button
+              onClick={() => onViewDay(selectedDate)}
+              className="bg-pink-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-pink-700 transition-colors"
+            >
+              View Activities for {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </button>
+          ) : (
+            <button
+              onClick={() => onAddActivityForDate(selectedDate)}
+              className="bg-pink-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-pink-700 transition-colors"
+            >
+              Add Activity for {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

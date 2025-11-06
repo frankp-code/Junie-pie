@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, memo } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, addDoc, deleteDoc, doc, orderBy, query, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, doc, orderBy, query, Timestamp, writeBatch } from 'firebase/firestore';
 import { ActivityForm } from '@/components/ActivityForm';
 import { ActivityList } from '@/components/ActivityList';
 import { Stats } from '@/components/Stats';
 import { Calendar } from '@/components/Calendar';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ActivityType, PuppyActivity } from '@/lib/types';
-import { Plus, List, LayoutDashboard, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, List, LayoutDashboard, Calendar as CalendarIcon, Settings as SettingsIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ConfirmationDialog from '@/components/ConfirmationDialog.tsx';
+import Settings from '@/components/Settings';
 
-type NavView = 'timeline' | 'add' | 'stats' | 'calendar';
+type NavView = 'timeline' | 'add' | 'stats' | 'calendar' | 'settings';
 
 const getCookie = (name: string): string | undefined => {
   const value = `; ${document.cookie}`;
@@ -26,6 +28,11 @@ function App() {
   const [timelineDate, setTimelineDate] = useState<Date | null>(null);
   const [dateForNewActivity, setDateForNewActivity] = useState<Date | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(getCookie('junebug_authenticated') === 'true');
+  const [confirmation, setConfirmation] = useState<{
+    message: string;
+    onConfirm: () => void;
+    onCancel: () => void;
+  } | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -46,6 +53,7 @@ function App() {
           ...data,
           activity_time: data.activity_time.toDate().toISOString(),
           end_time: data.end_time ? data.end_time.toDate().toISOString() : undefined,
+          parent_activity_id: data.parent_activity_id || null,
         } as PuppyActivity
       });
       setActivities(activitiesData);
@@ -56,26 +64,94 @@ function App() {
     }
   };
 
-  const handleAddActivity = async (activityType: ActivityType, activityTime: string, notes: string, endTime?: string) => {
-    const activitiesCollection = collection(db, 'puppy_activities');
-
-    const newActivity: any = {
-      activity_type: activityType,
-      activity_time: Timestamp.fromDate(new Date(activityTime)),
-      notes,
-      created_at: Timestamp.now(),
-    };
-
-    if ((activityType === 'walk' || activityType === 'sleep') && endTime) {
-      newActivity.end_time = Timestamp.fromDate(new Date(endTime));
+  const handleAddActivity = async (activityTypes: ActivityType[], activityTime: string | string[], notes: string, endTime?: string) => {
+    if (activityTypes.includes('med') && Array.isArray(activityTime)) {
+        const batch = writeBatch(db);
+        activityTime.forEach(time => {
+            const newActivityRef = doc(collection(db, 'puppy_activities'));
+            const newActivity = {
+                activity_type: 'med',
+                activity_time: Timestamp.fromDate(new Date(time)),
+                notes,
+                created_at: Timestamp.now(),
+            };
+            batch.set(newActivityRef, newActivity);
+        });
+        await batch.commit();
+        await fetchActivities();
+        setView('timeline');
+        return;
     }
 
-    try {
-      await addDoc(activitiesCollection, newActivity);
+    const ongoingWalk = activities.find(
+      (a) => a.activity_type === 'walk' && !a.end_time
+    );
+
+    const newActivityTime = new Date(activityTime as string);
+
+    const processActivityAddition = async (nestUnderWalk: boolean = false) => {
+      const batch = writeBatch(db);
+      let walkDocId: string | undefined = undefined;
+
+      if (ongoingWalk && !nestUnderWalk) {
+        const walkRef = doc(db, 'puppy_activities', ongoingWalk.id);
+        batch.update(walkRef, { end_time: Timestamp.fromDate(newActivityTime) });
+      }
+      
+      const sortedActivityTypes = [...activityTypes].sort((a, b) => {
+        if (a === 'walk') return -1;
+        if (b === 'walk') return 1;
+        return 0;
+      });
+
+      for (const activityType of sortedActivityTypes) {
+        const newActivityRef = doc(collection(db, 'puppy_activities'));
+        const newActivity: any = {
+          activity_type: activityType,
+          activity_time: Timestamp.fromDate(newActivityTime),
+          notes,
+          created_at: Timestamp.now(),
+        };
+
+        if ((activityType === 'walk' || activityType === 'sleep') && endTime) {
+          newActivity.end_time = Timestamp.fromDate(new Date(endTime));
+        }
+
+        if (activityType === 'walk') {
+            walkDocId = newActivityRef.id;
+        }
+
+        if (nestUnderWalk && ongoingWalk) {
+            newActivity.parent_activity_id = ongoingWalk.id;
+        } else if (activityType !== 'walk' && walkDocId) {
+            newActivity.parent_activity_id = walkDocId;
+        }
+
+        batch.set(newActivityRef, newActivity);
+      }
+
+      await batch.commit();
       await fetchActivities();
       setView('timeline');
-    } catch (error) {
-      console.error('Error adding activity:', error);
+    };
+
+    if (ongoingWalk && activityTypes.every(at => at !== 'sleep')) {
+      setConfirmation({
+        message: 'An activity is already in progress. Do you want to end the current walk?',
+        onConfirm: () => {
+          processActivityAddition(false);
+          setConfirmation(null);
+        },
+        onCancel: () => {
+          processActivityAddition(true);
+          setConfirmation(null);
+        },
+      });
+    } else if (ongoingWalk && activityTypes.includes('sleep')) {
+        await processActivityAddition(false);
+    }
+    else {
+      await processActivityAddition();
     }
   };
 
@@ -153,8 +229,15 @@ function App() {
                     />
                   </div>
                 );
+              case 'settings':
+                return <Settings />;
               default:
-                return <ActivityList activities={activities} onDelete={handleDeleteActivity} />;
+                return <ActivityList 
+                          activities={activities} 
+                          onDelete={handleDeleteActivity} 
+                          timelineDate={null}
+                          onClearTimelineDate={() => setTimelineDate(null)}
+                        />;
             }
           })()}
         </motion.div>
@@ -164,7 +247,7 @@ function App() {
 
   if (loading && isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-.center">
         <div className="text-center">
           <p className="text-gray-600">Loading June's diary...</p>
         </div>
@@ -175,8 +258,8 @@ function App() {
   return (
     <div className="min-h-screen bg-pink-50 font-sans">
       <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 py-4 text-center">
-          <div className="flex items-center gap-2 mx-auto">
+        <div className="max-w-md mx-auto px-4 py-4 flex justify-center">
+          <div className="flex items-center gap-2">
             <img src="/june.png" alt="June" className="w-10 h-10 rounded-full" />
             <h1 className="text-xl font-bold text-gray-800">The June-bug Diaries 💕</h1>
           </div>
@@ -204,8 +287,16 @@ function App() {
           <NavButton label="Calendar" icon={<CalendarIcon size={24} />} activeView={view} view="calendar" setView={setView} />
           <NavButton label="Timeline" icon={<List size={24} />} activeView={view} view="timeline" setView={setView} />
           <NavButton label="Stats" icon={<LayoutDashboard size={24} />} activeView={view} view="stats" setView={setView} />
+          <NavButton label="Settings" icon={<SettingsIcon size={24} />} activeView={view} view="settings" setView={setView} />
         </div>
       </nav>
+      {confirmation && (
+        <ConfirmationDialog
+            message={confirmation.message}
+            onConfirm={confirmation.onConfirm}
+            onCancel={confirmation.onCancel}
+        />
+      )}
     </div>
   );
 }
@@ -218,7 +309,7 @@ type NavButtonProps = {
   setView: (view: NavView) => void;
 };
 
-const NavButton = ({ label, icon, activeView, view, setView }: NavButtonProps) => {
+const NavButton = memo(({ label, icon, activeView, view, setView }: NavButtonProps) => {
   const isActive = activeView === view;
   return (
     <button 
@@ -240,6 +331,6 @@ const NavButton = ({ label, icon, activeView, view, setView }: NavButtonProps) =
       <span className="text-xs relative z-10">{label}</span>
     </button>
   );
-};
+});
 
 export default App;
