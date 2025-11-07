@@ -17,13 +17,17 @@ const activityOptions: { value: ActivityType; label: string; emoji: string }[] =
   { value: 'training', label: 'Training', emoji: '🎓' },
   { value: 'sleep', label: 'Sleep', emoji: '😴' },
   { value: 'chew', label: 'Chew', emoji: '🦴' },
-  { value: 'med', label: 'Med', emoji: '💊' },
   { value: 'other', label: 'Other', emoji: '📝' },
 ];
 
 const toiletActivityOptions: { value: ActivityType; label: string; emoji: string }[] = [
     { value: 'wee', label: 'Wee', emoji: '💧' },
     { value: 'poo', label: 'Poo', emoji: '💩' },
+];
+
+const healthActivityOptions: { value: ActivityType; label: string; emoji: string }[] = [
+    { value: 'med', label: 'Med', emoji: '💊' },
+    { value: 'vet', label: 'Vet', emoji: '⚕️' },
 ];
 
 const durationOptions = Array.from({ length: 60 }, (_, i) => {
@@ -42,11 +46,12 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
     targetDate.setHours(9, 0, 0, 0);
     return targetDate.toISOString().slice(0, 16);
   });
-  const [medDates, setMedDates] = useState<Date[]>([]);
+  const [multiDates, setMultiDates] = useState<Date[]>([]);
   const [duration, setDuration] = useState<number | undefined>(undefined);
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isToiletMenuOpen, setIsToiletMenuOpen] = useState(false);
+  const [isHealthMenuOpen, setIsHealthMenuOpen] = useState(false);
   const [notesError, setNotesError] = useState(false);
 
   useEffect(() => {
@@ -67,13 +72,10 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
 
   const handleActivityTypeToggle = (activityType: ActivityType) => {
     setActivityTypes(prev => {
-      if (activityType === 'med') {
-          return prev.includes('med') ? [] : ['med'];
+      if ([...healthActivityOptions.map(o => o.value), 'sleep'].includes(activityType)) {
+        return prev.includes(activityType) ? [] : [activityType];
       }
-      if (activityType === 'sleep') {
-        return prev.includes('sleep') ? [] : ['sleep'];
-      }
-      if (prev.includes('sleep') || prev.includes('med')) {
+      if (prev.some(at => [...healthActivityOptions.map(o => o.value), 'sleep'].includes(at))) {
         return [activityType];
       }
       return prev.includes(activityType)
@@ -88,11 +90,11 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
       alert('Please select at least one activity type.');
       return;
     }
-    if (activityTypes.includes('med') && medDates.length === 0) {
-        alert('Please select at least one date for the \'Med\' activity.');
+    if (isMultiDateActivitySelected && multiDates.length === 0) {
+        alert(`Please select at least one date for the activity.`);
         return;
     }
-    if ((activityTypes.includes('other') || activityTypes.includes('med')) && notes.trim() === '') {
+    if ((activityTypes.includes('other') || isMultiDateActivitySelected) && notes.trim() === '') {
       setNotesError(true);
       return;
     }
@@ -105,8 +107,8 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
             endTime = endTimeDate.toISOString();
         }
 
-        const timeToSubmit = activityTypes.includes('med') 
-            ? medDates.map(d => {
+        const timeToSubmit = isMultiDateActivitySelected
+            ? multiDates.map(d => {
                 const date = new Date(d);
                 date.setHours(0, 0, 0, 0);
                 return date.toISOString();
@@ -120,18 +122,21 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
   };
 
   const isDurationActivitySelected = activityTypes.includes('walk') || activityTypes.includes('sleep');
-  const isMedActivitySelected = activityTypes.includes('med');
+  const isMultiDateActivitySelected = activityTypes.some(at => healthActivityOptions.map(o => o.value).includes(at));
 
   return (
     <div>
         <AnimatePresence>
-            {isToiletMenuOpen && (
+            {(isToiletMenuOpen || isHealthMenuOpen) && (
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-                    onClick={() => setIsToiletMenuOpen(false)}
+                    onClick={() => {
+                        setIsToiletMenuOpen(false);
+                        setIsHealthMenuOpen(false);
+                    }}
                 >
                     <motion.div
                         initial={{ scale: 0.9, opacity: 0 }}
@@ -141,13 +146,14 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
                         className="bg-white rounded-2xl shadow-xl p-6"
                     >
                         <div className="flex justify-center gap-4">
-                            {toiletActivityOptions.map(option => (
+                            {(isToiletMenuOpen ? toiletActivityOptions : healthActivityOptions).map(option => (
                                 <button
                                     key={option.value}
                                     type="button"
                                     onClick={() => {
                                         handleActivityTypeToggle(option.value);
                                         setIsToiletMenuOpen(false);
+                                        setIsHealthMenuOpen(false);
                                     }}
                                     className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all text-center w-24 h-24 ${
                                         activityTypes.includes(option.value)
@@ -195,6 +201,18 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
                         <span className="text-2xl">🚽</span>
                         <span className="text-xs font-medium text-gray-800 mt-1">Toilet</span>
                     </button>
+                    <button
+                        type="button"
+                        onClick={() => setIsHealthMenuOpen(true)}
+                        className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all text-center ${(
+                            activityTypes.some(at => healthActivityOptions.map(o => o.value).includes(at)))
+                            ? 'border-pink-500 bg-pink-50'
+                            : 'border-gray-200 bg-white hover:border-gray-300'
+                        }`}
+                    >
+                        <span className="text-2xl">➕</span>
+                        <span className="text-xs font-medium text-gray-800 mt-1">Health</span>
+                    </button>
                     {activityOptions.map((option) => (
                         <button
                         key={option.value}
@@ -214,19 +232,19 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
             </div>
 
             <AnimatePresence>
-                {isMedActivitySelected && (
+                {isMultiDateActivitySelected && (
                     <motion.div
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                     >
-                        <MultiDatePicker selectedDates={medDates} onDateChange={setMedDates} />
+                        <MultiDatePicker selectedDates={multiDates} onDateChange={setMultiDates} />
                     </motion.div>
                 )}
             </AnimatePresence>
 
             <AnimatePresence>
-            {!isMedActivitySelected && (
+            {!isMultiDateActivitySelected && (
                 <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -241,7 +259,7 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
                             value={activityTime}
                             onChange={(e) => setActivityTime(e.target.value)}
                             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-transparent bg-white text-center"
-                            required={!isMedActivitySelected}
+                            required={!isMultiDateActivitySelected}
                         />
                     </div>
                     {isDurationActivitySelected && (
@@ -275,7 +293,7 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
                         setNotes(e.target.value);
                         if (notesError) setNotesError(false);
                     }}
-                    placeholder={(activityTypes.includes('other') || activityTypes.includes('med')) ? 'A description is required...' : 'Optional notes...'}
+                    placeholder={isMultiDateActivitySelected || activityTypes.includes('other') ? 'A description is required...' : 'Optional notes...'}
                     rows={3}
                     className={`w-full px-3 py-2 border rounded-lg focus:ring-1 focus:border-transparent resize-none bg-white ${
                         notesError

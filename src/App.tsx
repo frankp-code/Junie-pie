@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationDialog from '@/components/ConfirmationDialog.tsx';
 import Settings from '@/components/Settings';
 import '@/dark-theme.css';
+import '@/light-theme.css';
 
 type NavView = 'timeline' | 'add' | 'stats' | 'calendar' | 'settings';
 
@@ -35,7 +36,7 @@ function App() {
     onConfirm: () => void;
     onCancel: () => void;
   } | null>(null);
-  const [theme, setTheme] = useState('junie');
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -44,7 +45,7 @@ function App() {
   }, [isAuthenticated]);
 
   useEffect(() => {
-    document.body.className = theme === 'dark' ? 'dark-theme' : '';
+    document.body.className = `${theme}-theme`;
   }, [theme]);
 
   const fetchActivities = async () => {
@@ -72,12 +73,13 @@ function App() {
   };
 
   const handleAddActivity = async (activityTypes: ActivityType[], activityTime: string | string[], notes: string, endTime?: string) => {
-    if (activityTypes.includes('med') && Array.isArray(activityTime)) {
+    if ((activityTypes.includes('med') || activityTypes.includes('vet')) && Array.isArray(activityTime)) {
         const batch = writeBatch(db);
+        const type = activityTypes.find(at => at === 'med' || at === 'vet');
         activityTime.forEach(time => {
             const newActivityRef = doc(collection(db, 'puppy_activities'));
             const newActivity = {
-                activity_type: 'med',
+                activity_type: type,
                 activity_time: Timestamp.fromDate(new Date(time)),
                 notes,
                 created_at: Timestamp.now(),
@@ -292,7 +294,7 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-pink-50 font-sans">
+    <div className={`min-h-screen font-sans bg-pink-50`}>
       <header className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-md mx-auto px-4 py-4 flex justify-center">
           <div className="flex items-center gap-2">

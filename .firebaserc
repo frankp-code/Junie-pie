@@ -1,4 +1,7 @@
 {
+  "projects": {
+    "default": "junie-pie-v2"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -7,7 +10,7 @@
       "**/node_modules/**"
     ]
   },
-  "firestore": {
-    "rules": "firestore.rules"
+  "functions": {
+    "source": "functions"
   }
 }

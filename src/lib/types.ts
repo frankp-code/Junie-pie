@@ -1,12 +1,10 @@
-export type ActivityType = 'meal' | 'wee' | 'poo' | 'walk' | 'play' | 'sleep' | 'training' | 'other' | 'chew' | 'med';
+export type ActivityType = 'meal' | 'walk' | 'wee' | 'poo' | 'sleep' | 'play' | 'training' | 'chew' | 'med' | 'vet' | 'wake' | 'other';
 
 export interface PuppyActivity {
   id: string;
-  user_id: string;
   activity_type: ActivityType;
   activity_time: string;
   end_time?: string;
-  notes: string;
-  created_at: string;
-  parent_activity_id?: string | null;
+  notes?: string;
+  parent_activity_id?: string;
 }

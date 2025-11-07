@@ -1,0 +1,39 @@
+.light-theme {
+  --color-bg-primary: #FEF2F2;
+  --color-bg-secondary: #FFFFFF;
+  --color-text-primary: #374151;
+  --color-text-secondary: #6B7280;
+  --color-accent: #DB2777;
+}
+
+.light-theme .bg-pink-50 {
+  background-color: var(--color-bg-primary);
+}
+
+.light-theme .bg-white {
+  background-color: var(--color-bg-secondary);
+}
+
+.light-theme .text-gray-800 {
+  color: var(--color-text-primary);
+}
+
+.light-theme .text-gray-600 {
+  color: var(--color-text-secondary);
+}
+
+.light-theme .text-pink-600 {
+  color: var(--color-accent);
+}
+
+.light-theme .bg-pink-100 {
+    background-color: #FCE7F3;
+}
+
+.light-theme .bg-pink-600 {
+    background-color: var(--color-accent);
+}
+
+.light-theme .text-gray-500 {
+    color: var(--color-text-secondary);
+}

@@ -1,31 +1,28 @@
-import { useState } from 'react';
-import PuppyProfile from './Profile';
+import PuppyProfile from "./Profile";
 
-const Settings = () => {
-  const [theme, setTheme] = useState('junie');
+interface SettingsProps {
+  theme: string;
+  setTheme: (theme: string) => void;
+}
 
-  const handleThemeChange = (event) => {
-    setTheme(event.target.value);
-    // Later, we will add logic here to apply the theme to the app
-  };
+const Settings = ({ theme, setTheme }: SettingsProps) => {
 
   return (
-    <div className="p-4">
+    <div className="space-y-8">
       <PuppyProfile />
-      <div className="mt-8">
+      <div className="p-4 rounded-lg bg-white shadow-sm">
         <h2 className="text-2xl font-bold mb-4">Theme</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Select Theme</label>
-            <select 
-              value={theme} 
-              onChange={handleThemeChange} 
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring-pink-500 sm:text-sm"
-            >
-              <option value="junie">Junie</option>
-              <option value="dark">Dark</option>
-            </select>
-          </div>
+        <div className="flex justify-around p-2 bg-gray-100 rounded-lg">
+          <button 
+            onClick={() => setTheme('light')}
+            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${theme === 'light' ? 'bg-pink-600 text-white shadow-md' : 'bg-transparent text-gray-700'}`}>
+              Light
+          </button>
+          <button 
+            onClick={() => setTheme('dark')}
+            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${theme === 'dark' ? 'bg-pink-600 text-white shadow-md' : 'bg-transparent text-gray-700'}`}>
+              Dark
+          </button>
         </div>
       </div>
     </div>
