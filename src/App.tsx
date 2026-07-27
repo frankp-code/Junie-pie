@@ -1,5 +1,6 @@
 import { useEffect, useState, memo } from 'react';
 import { db } from '@/lib/firebase';
+import { Settings as SettingsIcon } from 'lucide-react';
 import { collection, getDocs, addDoc, deleteDoc, doc, orderBy, query, Timestamp, writeBatch } from 'firebase/firestore';
 import { ActivityForm } from '@/components/ActivityForm';
 import { ActivityList } from '@/components/ActivityList';
@@ -13,7 +14,7 @@ import ConfirmationDialog from '@/components/ConfirmationDialog.tsx';
 import Settings from '@/components/Settings';
 import PuppyProfile from '@/components/Profile';
 
-type NavView = 'timeline' | 'add' | 'stats' | 'calendar' | 'profile';
+type NavView = 'timeline' | 'add' | 'stats' | 'calendar' | 'profile' | 'settings';
 
 const getCookie = (name: string): string | undefined => {
   const value = `; ${document.cookie}`;
@@ -309,6 +310,8 @@ function App() {
                 );
               case 'profile':
                 return <PuppyProfile />;
+              case 'settings':
+                return <Settings />;
               default:
                 return <ActivityList 
                           activities={activities} 
@@ -341,9 +344,14 @@ function App() {
             <img src="/june.png" alt="June" className="w-10 h-10 rounded-full border-2 border-pink-100" />
             <h1 className="text-xl font-bold text-gray-800">The June-bug Diaries 💕</h1>
           </div>
-          <button onClick={() => setView('calendar')} className={`p-2 rounded-full transition-colors ${view === 'calendar' ? 'bg-pink-100 text-pink-600' : 'text-gray-500 hover:bg-gray-100 hover:text-pink-500'}`}>
-            <CalendarIcon size={24} />
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => setView('calendar')} className={`p-2 rounded-full transition-colors ${view === 'calendar' ? 'bg-pink-100 text-pink-600' : 'text-gray-500 hover:bg-gray-100 hover:text-pink-500'}`}>
+              <CalendarIcon size={24} />
+            </button>
+            <button onClick={() => setView('settings')} className={`p-2 rounded-full transition-colors ${view === 'settings' ? 'bg-pink-100 text-pink-600' : 'text-gray-500 hover:bg-gray-100 hover:text-pink-500'}`}>
+              <SettingsIcon size={24} />
+            </button>
+          </div>
         </div>
       </header>
 
