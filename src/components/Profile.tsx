@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { db, storage } from '../lib/firebase';
+import { compressImage } from '../lib/imageUtils';
+import { db } from '../lib/firebase';
 import { doc, getDoc, setDoc, collection, addDoc, getDocs, query, orderBy, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { WeightEntry } from '../lib/types';
 import { Trash2, Plus, Camera } from 'lucide-react';
 
@@ -71,13 +71,11 @@ const PuppyProfile = () => {
       const file = e.target.files[0];
       setIsUploadingPhoto(true);
       try {
-        const fileRef = ref(storage, `profile_photos/junie_${Date.now()}`);
-        await uploadBytes(fileRef, file);
-        const url = await getDownloadURL(fileRef);
-        setProfilePhotoUrl(url);
+        const base64Image = await compressImage(file);
         
         const docRef = doc(db, 'puppy_profile', 'junie');
-        await setDoc(docRef, { profilePhotoUrl: url }, { merge: true });
+        await setDoc(docRef, { profilePhotoUrl: base64Image }, { merge: true });
+        setProfilePhotoUrl(base64Image);
       } catch (error) {
         console.error("Error uploading photo:", error);
       } finally {

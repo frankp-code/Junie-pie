@@ -3,8 +3,7 @@ import { ActivityType } from '../lib/types';
 import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MultiDatePicker } from './MultiDatePicker';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '../lib/firebase';
+import { compressImage } from '../lib/imageUtils';
 import { ImagePlus, X } from 'lucide-react';
 
 interface ActivityFormProps {
@@ -120,9 +119,7 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
 
         let photoUrl: string | undefined = undefined;
         if (photo) {
-            const fileRef = ref(storage, `activity_photos/${Date.now()}_${photo.name}`);
-            await uploadBytes(fileRef, photo);
-            photoUrl = await getDownloadURL(fileRef);
+            photoUrl = await compressImage(photo);
         }
 
         const timeToSubmit = activityTypes.includes('med') 
