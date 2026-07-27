@@ -2,6 +2,7 @@ import { PuppyActivity, ActivityType } from '../lib/types';
 import { Trash2, Edit3, Clock, ChevronDown, ChevronRight, Dog } from 'lucide-react';
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useSwipeable } from 'react-swipeable';
 
 interface ActivityListProps {
   activities: PuppyActivity[];
@@ -26,6 +27,11 @@ const activityIcons: { [key in ActivityType | 'other']: { icon: string; color: s
 const ActivityItem = ({ activity, nested, onDelete }: { activity: PuppyActivity, nested: boolean, onDelete: (id: string) => void }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { icon, color } = activityIcons[activity.activity_type] || activityIcons.other;
+
+  const handlers = useSwipeable({
+    onSwipedLeft: () => onDelete(activity.id),
+    trackMouse: true,
+  });
 
   const startTime = new Date(activity.activity_time).toLocaleTimeString('en-US', {
     hour: 'numeric',
@@ -52,7 +58,7 @@ const ActivityItem = ({ activity, nested, onDelete }: { activity: PuppyActivity,
   }
 
   return (
-    <div className={`rounded-lg p-3 ${nested ? `ml-6 border-l-2 border-gray-200` : ''} `}>
+    <div {...handlers} className={`rounded-lg p-3 ${nested ? `ml-6 border-l-2 border-gray-200` : ''} `}>
         <div className="flex items-start gap-3">
             <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${color}`}>
                 {icon}
@@ -89,6 +95,11 @@ const WalkActivityItem = ({ activity, children, onDelete }: { activity: PuppyAct
     const [isExpanded, setIsExpanded] = useState(true);
     const { icon, color } = activityIcons[activity.activity_type] || activityIcons.other;
 
+    const handlers = useSwipeable({
+      onSwipedLeft: () => onDelete(activity.id),
+      trackMouse: true,
+    });
+
     const startTime = new Date(activity.activity_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     let endTime: string | null = null;
     if (activity.end_time) {
@@ -105,7 +116,7 @@ const WalkActivityItem = ({ activity, children, onDelete }: { activity: PuppyAct
     }
 
     return (
-        <div className="rounded-lg p-3 bg-white shadow-sm">
+        <div {...handlers} className="rounded-lg p-3 bg-white shadow-sm">
             <div className="flex items-start gap-3">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${color}`}>
                     {icon}
