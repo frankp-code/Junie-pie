@@ -203,7 +203,7 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
                     <button
                         type="button"
                         onClick={() => setIsToiletMenuOpen(true)}
-                        className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all text-center ${(
+                        className={`w-full flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all text-center ${(
                             activityTypes.includes('wee') || activityTypes.includes('poo'))
                             ? 'border-pink-500 bg-pink-50'
                             : 'border-gray-200 bg-white hover:border-gray-300'
@@ -217,7 +217,7 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
                         key={option.value}
                         type="button"
                         onClick={() => handleActivityTypeToggle(option.value)}
-                        className={`flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all text-center ${
+                        className={`w-full flex flex-col items-center justify-center p-2 rounded-lg border-2 transition-all text-center ${
                             activityTypes.includes(option.value)
                             ? 'border-pink-500 bg-pink-50'
                             : 'border-gray-200 bg-white hover:border-gray-300'
