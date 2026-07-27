@@ -3,9 +3,12 @@ import { ActivityType } from '../lib/types';
 import { ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MultiDatePicker } from './MultiDatePicker';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../lib/firebase';
+import { ImagePlus, X } from 'lucide-react';
 
 interface ActivityFormProps {
-  onSubmit: (activityTypes: ActivityType[], activityTime: string | string[], notes: string, endTime?: string) => Promise<void>;
+  onSubmit: (activityTypes: ActivityType[], activityTime: string | string[], notes: string, endTime?: string, photoUrl?: string) => Promise<void>;
   onBack: () => void;
   date: Date | null;
 }
@@ -48,6 +51,16 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isToiletMenuOpen, setIsToiletMenuOpen] = useState(false);
   const [notesError, setNotesError] = useState(false);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setPhoto(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
 
   useEffect(() => {
     const targetDate = date ? new Date(date) : new Date();
@@ -105,6 +118,13 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
             endTime = endTimeDate.toISOString();
         }
 
+        let photoUrl: string | undefined = undefined;
+        if (photo) {
+            const fileRef = ref(storage, `activity_photos/${Date.now()}_${photo.name}`);
+            await uploadBytes(fileRef, photo);
+            photoUrl = await getDownloadURL(fileRef);
+        }
+
         const timeToSubmit = activityTypes.includes('med') 
             ? medDates.map(d => {
                 const date = new Date(d);
@@ -113,7 +133,7 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
             }) 
             : activityTime;
 
-        await onSubmit(activityTypes, timeToSubmit, notes, endTime);
+        await onSubmit(activityTypes, timeToSubmit, notes, endTime, photoUrl);
     } finally {
       setIsSubmitting(false);
     }
@@ -283,6 +303,30 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
                         : 'border-gray-300 focus:ring-pink-500'
                     }`}
                 />
+            </div>
+
+            <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">Photo Memory (optional)</label>
+                {!photoPreview ? (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <ImagePlus className="w-8 h-8 mb-2 text-gray-400" />
+                            <p className="text-sm text-gray-500 font-medium">Click to attach photo</p>
+                        </div>
+                        <input type="file" className="hidden" accept="image/*" onChange={handlePhotoChange} />
+                    </label>
+                ) : (
+                    <div className="relative inline-block">
+                        <img src={photoPreview} alt="Preview" className="h-32 rounded-lg object-cover border border-gray-200" />
+                        <button 
+                            type="button" 
+                            onClick={() => { setPhoto(null); setPhotoPreview(null); }}
+                            className="absolute -top-2 -right-2 bg-white rounded-full p-1 shadow-md border border-gray-200 text-gray-500 hover:text-red-500"
+                        >
+                            <X size={16} />
+                        </button>
+                    </div>
+                )}
             </div>
         </form>
     </div>

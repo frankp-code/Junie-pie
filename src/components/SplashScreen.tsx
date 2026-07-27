@@ -6,17 +6,23 @@ interface SplashScreenProps {
 }
 
 export function SplashScreen({ onAuthenticated }: SplashScreenProps) {
+  const [name, setName] = useState('');
   const [passcode, setPasscode] = useState('');
   const [error, setError] = useState(false);
   const [showPasscode, setShowPasscode] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name.trim()) {
+      alert("Please enter your name");
+      return;
+    }
     if (passcode === 'junebugwibble') {
       const date = new Date();
       date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
       const expires = `expires=${date.toUTCString()}`;
       document.cookie = `junebug_authenticated=true;${expires};path=/`;
+      localStorage.setItem('junebug_user_name', name.trim());
       onAuthenticated();
     } else {
       setError(true);
@@ -29,9 +35,18 @@ export function SplashScreen({ onAuthenticated }: SplashScreenProps) {
       <div className="text-center mb-8">
         <img src="/june.png" alt="June" className="w-24 h-24 rounded-full mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-gray-800">The June-bug Diaries 💕</h1>
-        <p className="text-gray-600">Please enter the passcode to continue.</p>
+        <p className="text-gray-600">Please enter your name and passcode.</p>
       </div>
-      <form onSubmit={handleSubmit} className="w-full max-w-xs">
+      <form onSubmit={handleSubmit} className="w-full max-w-xs space-y-4">
+        <div>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-4 py-2 text-center border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-transparent"
+            placeholder="Your Name (e.g. Frank)"
+          />
+        </div>
         <div className="relative">
           <input
             type={showPasscode ? 'text' : 'password'}
@@ -48,8 +63,8 @@ export function SplashScreen({ onAuthenticated }: SplashScreenProps) {
             {showPasscode ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
-        {error && <p className="text-red-500 text-sm text-center mt-2">Incorrect passcode. Please try again.</p>}
-        <button type="submit" className="w-full mt-4 bg-pink-600 text-white rounded-lg py-2 font-semibold hover:bg-pink-700">
+        {error && <p className="text-red-500 text-sm text-center">Incorrect passcode. Please try again.</p>}
+        <button type="submit" className="w-full bg-pink-600 text-white rounded-lg py-2 font-semibold hover:bg-pink-700">
           Unlock
         </button>
       </form>

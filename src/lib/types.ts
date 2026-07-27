@@ -9,4 +9,12 @@ export interface PuppyActivity {
   notes: string;
   created_at: string;
   parent_activity_id?: string | null;
+  logged_by?: string;
+  photo_url?: string;
+}
+
+export interface WeightEntry {
+  id: string;
+  weight_kg: number;
+  date: string;
 }

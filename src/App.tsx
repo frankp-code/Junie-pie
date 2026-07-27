@@ -7,12 +7,12 @@ import { Stats } from '@/components/Stats';
 import { Calendar } from '@/components/Calendar';
 import { SplashScreen } from '@/components/SplashScreen';
 import { ActivityType, PuppyActivity } from '@/lib/types';
-import { Plus, List, LayoutDashboard, Calendar as CalendarIcon, Settings as SettingsIcon } from 'lucide-react';
+import { Plus, List, LayoutDashboard, Calendar as CalendarIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationDialog from '@/components/ConfirmationDialog.tsx';
-import Settings from '@/components/Settings';
+import PuppyProfile from '@/components/Profile';
 
-type NavView = 'timeline' | 'add' | 'stats' | 'calendar' | 'settings';
+type NavView = 'timeline' | 'add' | 'stats' | 'calendar' | 'profile';
 
 const getCookie = (name: string): string | undefined => {
   const value = `; ${document.cookie}`;
@@ -40,6 +40,54 @@ function App() {
     }
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  useEffect(() => {
+    const checkReminders = () => {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const now = new Date();
+      
+      // Only remind during daytime (8 AM to 8 PM)
+      if (now.getHours() < 8 || now.getHours() > 20) return;
+
+      const lastMeal = activities.find(a => a.activity_type === 'meal');
+      const lastMed = activities.find(a => a.activity_type === 'med');
+
+      const lastNotifiedMeal = localStorage.getItem('junie_last_notified_meal');
+      const lastNotifiedMed = localStorage.getItem('junie_last_notified_med');
+      
+      const todayString = now.toDateString();
+
+      if (lastMeal) {
+        const hoursSinceMeal = (now.getTime() - new Date(lastMeal.activity_time).getTime()) / (1000 * 60 * 60);
+        if (hoursSinceMeal > 6 && hoursSinceMeal < 24 && lastNotifiedMeal !== todayString) {
+          new Notification('Meal Reminder 🥣', { body: "It's been over 6 hours since Junie's last meal!" });
+          localStorage.setItem('junie_last_notified_meal', todayString);
+        }
+      }
+
+      if (lastMed) {
+        const hoursSinceMed = (now.getTime() - new Date(lastMed.activity_time).getTime()) / (1000 * 60 * 60);
+        if (hoursSinceMed > 12 && hoursSinceMed < 24 && lastNotifiedMed !== todayString) {
+          new Notification('Medication Reminder 💊', { body: "It's been over 12 hours since Junie's last medication!" });
+          localStorage.setItem('junie_last_notified_med', todayString);
+        }
+      }
+    };
+
+    const interval = setInterval(checkReminders, 15 * 60 * 1000); // Check every 15 minutes
+    const timeout = setTimeout(checkReminders, 5000); // Check 5s after load
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [activities]);
+
   const fetchActivities = async () => {
     setLoading(true);
     try {
@@ -64,19 +112,24 @@ function App() {
     }
   };
 
-  const handleAddActivity = async (activityTypes: ActivityType[], activityTime: string | string[], notes: string, endTime?: string) => {
+  const handleAddActivity = async (activityTypes: ActivityType[], activityTime: string | string[], notes: string, endTime?: string, photoUrl?: string) => {
     if (activityTypes.includes('med') && Array.isArray(activityTime)) {
         const batch = writeBatch(db);
+        const currentUserName = localStorage.getItem('junebug_user_name') || 'Unknown';
+        
         activityTime.forEach(time => {
             const newActivityRef = doc(collection(db, 'puppy_activities'));
-            const newActivity = {
+            const newActivity: any = {
                 activity_type: 'med',
                 activity_time: Timestamp.fromDate(new Date(time)),
                 notes,
                 created_at: Timestamp.now(),
+                logged_by: currentUserName,
             };
+            if (photoUrl) newActivity.photo_url = photoUrl;
             batch.set(newActivityRef, newActivity);
         });
+
         await batch.commit();
         await fetchActivities();
         setView('timeline');
@@ -114,6 +167,7 @@ function App() {
     });
 
     let walkDocId: string | undefined = undefined;
+    const currentUserName = localStorage.getItem('junebug_user_name') || 'Unknown';
 
     for (const activityType of sortedActivityTypes) {
       const newActivityRef = doc(collection(db, 'puppy_activities'));
@@ -122,7 +176,12 @@ function App() {
         activity_time: Timestamp.fromDate(newActivityTime),
         notes,
         created_at: Timestamp.now(),
+        logged_by: currentUserName,
       };
+
+      if (photoUrl) {
+          newActivity.photo_url = photoUrl;
+      }
 
       if ((activityType === 'walk' || activityType === 'sleep') && endTime) {
         newActivity.end_time = Timestamp.fromDate(new Date(endTime));
@@ -247,8 +306,8 @@ function App() {
                     />
                   </div>
                 );
-              case 'settings':
-                return <Settings />;
+              case 'profile':
+                return <PuppyProfile />;
               default:
                 return <ActivityList 
                           activities={activities} 
@@ -276,36 +335,33 @@ function App() {
   return (
     <div className="min-h-screen bg-pink-50 font-sans">
       <header className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-md mx-auto px-4 py-4 flex justify-center">
-          <div className="flex items-center gap-2">
-            <img src="/june.png" alt="June" className="w-10 h-10 rounded-full" />
+        <div className="max-w-md mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setView('profile')}>
+            <img src="/june.png" alt="June" className="w-10 h-10 rounded-full border-2 border-pink-100" />
             <h1 className="text-xl font-bold text-gray-800">The June-bug Diaries 💕</h1>
           </div>
+          <button onClick={() => setView('calendar')} className={`p-2 rounded-full transition-colors ${view === 'calendar' ? 'bg-pink-100 text-pink-600' : 'text-gray-500 hover:bg-gray-100 hover:text-pink-500'}`}>
+            <CalendarIcon size={24} />
+          </button>
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 py-6">
+      <main className="max-w-md mx-auto px-4 py-6 pb-24">
         {renderView()}
       </main>
 
-      {view === 'timeline' && 
-        <motion.button 
-          initial={{ scale: 0, y: 100 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0, y: 100 }}
-          onClick={() => { setDateForNewActivity(null); setView('add'); }} 
-          className="fixed bottom-24 right-8 bg-pink-600 text-white rounded-full p-4 shadow-lg z-20"
-        >
-            <Plus size={28} />
-        </motion.button>
-      }
-
       <nav className="fixed bottom-0 inset-x-0 bg-white border-t z-10 pb-4 pt-2">
-        <div className="max-w-md mx-auto flex justify-around relative">
-          <NavButton label="Calendar" icon={<CalendarIcon size={24} />} activeView={view} view="calendar" setView={setView} />
+        <div className="max-w-md mx-auto flex justify-around items-center relative">
           <NavButton label="Timeline" icon={<List size={24} />} activeView={view} view="timeline" setView={setView} />
+          
+          <button 
+            onClick={() => { setDateForNewActivity(null); setView('add'); }} 
+            className={`flex flex-col items-center justify-center w-14 h-14 rounded-full shadow-lg transform -translate-y-6 transition-all hover:scale-105 active:scale-95 ${view === 'add' ? 'bg-pink-700 text-white' : 'bg-pink-500 text-white hover:bg-pink-600'}`}
+          >
+            <Plus size={32} />
+          </button>
+
           <NavButton label="Stats" icon={<LayoutDashboard size={24} />} activeView={view} view="stats" setView={setView} />
-          <NavButton label="Settings" icon={<SettingsIcon size={24} />} activeView={view} view="settings" setView={setView} />
         </div>
       </nav>
       {confirmation && (

@@ -72,3 +72,20 @@ export const ActivityDurationChart = ({ data }: { data: any }) => {
 
   return <Bar options={options} data={data} />;
 }
+
+export const WeightChart = ({ data }: { data: any }) => {
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: true,
+        text: 'Weight Growth (kg)',
+      },
+    },
+  };
+
+  return <Line options={options} data={data} />;
+}

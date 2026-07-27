@@ -82,6 +82,18 @@ const ActivityItem = ({ activity, nested, onDelete }: { activity: PuppyActivity,
                 )}
 
                 {activity.notes && <p className="text-sm text-gray-600 mt-1">{activity.notes}</p>}
+                
+                {activity.photo_url && (
+                    <div className="mt-2">
+                        <img src={activity.photo_url} alt="Activity" className="rounded-md max-h-48 object-cover border border-gray-200" />
+                    </div>
+                )}
+                
+                {activity.logged_by && (
+                    <div className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                        <span className="font-medium">Logged by:</span> {activity.logged_by}
+                    </div>
+                )}
             </div>
             <button onClick={() => onDelete(activity.id)} className="text-gray-400 hover:text-red-500 p-1">
                 <Trash2 size={16} />
@@ -138,6 +150,18 @@ const WalkActivityItem = ({ activity, children, onDelete }: { activity: PuppyAct
                     </div>
 
                     {activity.notes && <p className="text-sm text-gray-600 mt-1">{activity.notes}</p>}
+                    
+                    {activity.photo_url && (
+                        <div className="mt-2">
+                            <img src={activity.photo_url} alt="Activity" className="rounded-md max-h-48 object-cover border border-gray-200" />
+                        </div>
+                    )}
+                    
+                    {activity.logged_by && (
+                        <div className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                            <span className="font-medium">Logged by:</span> {activity.logged_by}
+                        </div>
+                    )}
                 </div>
                 <button onClick={() => setIsExpanded(!isExpanded)} className="text-gray-400 hover:text-gray-600 p-1">
                     {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
