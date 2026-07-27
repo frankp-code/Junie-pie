@@ -10,6 +10,7 @@ import { ActivityType, PuppyActivity } from '@/lib/types';
 import { Plus, List, LayoutDashboard, Calendar as CalendarIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfirmationDialog from '@/components/ConfirmationDialog.tsx';
+import Settings from '@/components/Settings';
 import PuppyProfile from '@/components/Profile';
 
 type NavView = 'timeline' | 'add' | 'stats' | 'calendar' | 'profile';
