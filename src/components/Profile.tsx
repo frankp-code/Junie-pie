@@ -214,6 +214,18 @@ const PuppyProfile = () => {
           )}
         </div>
       </div>
+      
+      <div className="mt-8 flex justify-center">
+        <button 
+          onClick={() => {
+            document.cookie = 'junebug_authenticated=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            window.location.reload();
+          }}
+          className="text-red-500 font-semibold hover:text-red-600 px-4 py-2"
+        >
+          Logout
+        </button>
+      </div>
     </div>
   );
 };
