@@ -1,7 +1,7 @@
 import { useEffect, useState, memo } from 'react';
 import { db } from '@/lib/firebase';
 import { Settings as SettingsIcon } from 'lucide-react';
-import { collection, getDocs, addDoc, deleteDoc, doc, orderBy, query, Timestamp, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, addDoc, deleteDoc, updateDoc, doc, orderBy, query, Timestamp, writeBatch } from 'firebase/firestore';
 import { ActivityForm } from '@/components/ActivityForm';
 import { ActivityList } from '@/components/ActivityList';
 import { Stats } from '@/components/Stats';
@@ -216,6 +216,18 @@ function App() {
       console.error('Error deleting activity:', error);
     }
   };
+
+  const handleEndActivity = async (id: string) => {
+    try {
+      const activityDoc = doc(db, 'puppy_activities', id);
+      await updateDoc(activityDoc, {
+        end_time: Timestamp.now()
+      });
+      await fetchActivities();
+    } catch (error) {
+      console.error('Error ending activity:', error);
+    }
+  };
   
   const handleViewDay = (date: Date) => {
     setTimelineDate(date);
@@ -280,6 +292,7 @@ function App() {
                     <ActivityList 
                       activities={filteredActivities} 
                       onDelete={handleDeleteActivity} 
+                      onEndActivity={handleEndActivity}
                       timelineDate={timelineDate}
                       onClearTimelineDate={() => setTimelineDate(null)}
                     />
@@ -316,6 +329,7 @@ function App() {
                 return <ActivityList 
                           activities={activities} 
                           onDelete={handleDeleteActivity} 
+                          onEndActivity={handleEndActivity}
                           timelineDate={null}
                           onClearTimelineDate={() => setTimelineDate(null)}
                         />;

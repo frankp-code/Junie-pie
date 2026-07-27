@@ -1,12 +1,12 @@
 import { PuppyActivity, ActivityType } from '../lib/types';
-import { Trash2, Edit3, Clock, ChevronDown, ChevronRight, Dog } from 'lucide-react';
+import { Trash2, Edit3, Clock, ChevronDown, ChevronRight, Dog, CheckCircle2 } from 'lucide-react';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSwipeable } from 'react-swipeable';
+import { motion, AnimatePresence, useMotionValue, useTransform, useAnimation } from 'framer-motion';
 
 interface ActivityListProps {
   activities: PuppyActivity[];
   onDelete: (id: string) => void;
+  onEndActivity: (id: string) => void;
   timelineDate: Date | null;
   onClearTimelineDate: () => void;
 }
@@ -24,14 +24,37 @@ const activityIcons: { [key in ActivityType | 'other']: { icon: string; color: s
   med: { icon: '💊', color: 'bg-rose-100' },
 };
 
-const ActivityItem = ({ activity, nested, onDelete }: { activity: PuppyActivity, nested: boolean, onDelete: (id: string) => void }) => {
+const ActivityItem = ({ activity, nested, onDelete, onEndActivity }: { activity: PuppyActivity, nested: boolean, onDelete: (id: string) => void, onEndActivity: (id: string) => void }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { icon, color } = activityIcons[activity.activity_type] || activityIcons.other;
 
-  const handlers = useSwipeable({
-    onSwipedLeft: () => onDelete(activity.id),
-    trackMouse: true,
-  });
+  const canEnd = !activity.end_time && (activity.activity_type === 'walk' || activity.activity_type === 'sleep');
+  
+  const x = useMotionValue(0);
+  const controls = useAnimation();
+  
+  const background = useTransform(
+    x,
+    [-100, 0, 100],
+    ["#fee2e2", "#f9fafb", canEnd ? "#dcfce7" : "#f9fafb"]
+  );
+
+  const opacityLeft = useTransform(x, [-50, -20, 0], [1, 0, 0]);
+  const opacityRight = useTransform(x, [0, 20, 50], [0, 0, 1]);
+  const scaleLeft = useTransform(x, [-50, -20, 0], [1, 0.8, 0.8]);
+  const scaleRight = useTransform(x, [0, 20, 50], [0.8, 0.8, 1]);
+
+  const handleDragEnd = async (e: any, info: any) => {
+    if (info.offset.x < -100) {
+      await controls.start({ x: -window.innerWidth, transition: { duration: 0.2 } });
+      onDelete(activity.id);
+    } else if (info.offset.x > 100 && canEnd) {
+      await controls.start({ x: window.innerWidth, transition: { duration: 0.2 } });
+      onEndActivity(activity.id);
+    } else {
+      controls.start({ x: 0, transition: { type: "spring", bounce: 0.5 } });
+    }
+  };
 
   const startTime = new Date(activity.activity_time).toLocaleTimeString('en-US', {
     hour: 'numeric',
@@ -58,59 +81,97 @@ const ActivityItem = ({ activity, nested, onDelete }: { activity: PuppyActivity,
   }
 
   return (
-    <div {...handlers} className={`rounded-lg p-3 ${nested ? `ml-6 border-l-2 border-gray-200` : ''} `}>
-        <div className="flex items-start gap-3">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${color}`}>
-                {icon}
-            </div>
-            <div className="flex-1">
-                <div className="flex justify-between items-center">
-                    <span className="font-bold capitalize text-gray-800">
-                        {activity.activity_type.replace('_', ' ')}
-                    </span>
-                    <span className="text-sm text-gray-500 font-medium">{startTime}</span>
-                </div>
-                
-                {(duration || endTime) && (
-                    <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                        <Clock size={12}/>
-                        <span>
-                            {endTime && `${startTime} - ${endTime}`}
-                            {duration && <span className="font-semibold"> ({duration})</span>}
-                        </span>
-                    </div>
-                )}
-
-                {activity.notes && <p className="text-sm text-gray-600 mt-1">{activity.notes}</p>}
-                
-                {activity.photo_url && (
-                    <div className="mt-2">
-                        <img src={activity.photo_url} alt="Activity" className="rounded-md max-h-48 object-cover border border-gray-200" />
-                    </div>
-                )}
-                
-                {activity.logged_by && (
-                    <div className="text-xs text-gray-400 mt-2 flex items-center gap-1">
-                        <span className="font-medium">Logged by:</span> {activity.logged_by}
-                    </div>
-                )}
-            </div>
-            <button onClick={() => onDelete(activity.id)} className="text-gray-400 hover:text-red-500 p-1">
-                <Trash2 size={16} />
-            </button>
+    <motion.div className={`relative overflow-hidden rounded-lg mb-2 ${nested ? 'ml-6' : ''}`} style={{ background }}>
+        <div className="absolute inset-0 flex items-center justify-between px-4">
+            <motion.div style={{ opacity: opacityRight, scale: scaleRight }} className="text-green-600 font-medium flex items-center gap-2">
+                <CheckCircle2 size={24} /> <span className="text-sm">End</span>
+            </motion.div>
+            <motion.div style={{ opacity: opacityLeft, scale: scaleLeft }} className="text-red-600 font-medium flex items-center gap-2">
+                <span className="text-sm">Delete</span> <Trash2 size={24} />
+            </motion.div>
         </div>
-    </div>
+        <motion.div
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={{ left: 0.5, right: canEnd ? 0.5 : 0 }}
+            onDragEnd={handleDragEnd}
+            style={{ x }}
+            animate={controls}
+            className={`bg-white rounded-lg p-3 relative z-10 shadow-sm border ${nested ? 'border-l-4 border-l-gray-200' : 'border-gray-100'}`}
+        >
+            <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${color}`}>
+                    {icon}
+                </div>
+                <div className="flex-1">
+                    <div className="flex justify-between items-center">
+                        <span className="font-bold capitalize text-gray-800">
+                            {activity.activity_type.replace('_', ' ')}
+                        </span>
+                        <span className="text-sm text-gray-500 font-medium">{startTime}</span>
+                    </div>
+                    
+                    {(duration || endTime) && (
+                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                            <Clock size={12}/>
+                            <span>
+                                {endTime && `${startTime} - ${endTime}`}
+                                {duration && <span className="font-semibold"> ({duration})</span>}
+                            </span>
+                        </div>
+                    )}
+
+                    {activity.notes && <p className="text-sm text-gray-600 mt-1">{activity.notes}</p>}
+                    
+                    {activity.photo_url && (
+                        <div className="mt-2">
+                            <img src={activity.photo_url} alt="Activity" className="rounded-md max-h-48 object-cover border border-gray-200" />
+                        </div>
+                    )}
+                    
+                    {activity.logged_by && (
+                        <div className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                            <span className="font-medium">Logged by:</span> {activity.logged_by}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </motion.div>
+    </motion.div>
   );
 };
 
-const WalkActivityItem = ({ activity, children, onDelete }: { activity: PuppyActivity, children: React.ReactNode, onDelete: (id: string) => void }) => {
+const WalkActivityItem = ({ activity, children, onDelete, onEndActivity }: { activity: PuppyActivity, children: React.ReactNode, onDelete: (id: string) => void, onEndActivity: (id: string) => void }) => {
     const [isExpanded, setIsExpanded] = useState(true);
     const { icon, color } = activityIcons[activity.activity_type] || activityIcons.other;
 
-    const handlers = useSwipeable({
-      onSwipedLeft: () => onDelete(activity.id),
-      trackMouse: true,
-    });
+    const canEnd = !activity.end_time;
+
+    const x = useMotionValue(0);
+    const controls = useAnimation();
+    
+    const background = useTransform(
+      x,
+      [-100, 0, 100],
+      ["#fee2e2", "#f9fafb", canEnd ? "#dcfce7" : "#f9fafb"]
+    );
+  
+    const opacityLeft = useTransform(x, [-50, -20, 0], [1, 0, 0]);
+    const opacityRight = useTransform(x, [0, 20, 50], [0, 0, 1]);
+    const scaleLeft = useTransform(x, [-50, -20, 0], [1, 0.8, 0.8]);
+    const scaleRight = useTransform(x, [0, 20, 50], [0.8, 0.8, 1]);
+  
+    const handleDragEnd = async (e: any, info: any) => {
+      if (info.offset.x < -100) {
+        await controls.start({ x: -window.innerWidth, transition: { duration: 0.2 } });
+        onDelete(activity.id);
+      } else if (info.offset.x > 100 && canEnd) {
+        await controls.start({ x: window.innerWidth, transition: { duration: 0.2 } });
+        onEndActivity(activity.id);
+      } else {
+        controls.start({ x: 0, transition: { type: "spring", bounce: 0.5 } });
+      }
+    };
 
     const startTime = new Date(activity.activity_time).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     let endTime: string | null = null;
@@ -128,62 +189,80 @@ const WalkActivityItem = ({ activity, children, onDelete }: { activity: PuppyAct
     }
 
     return (
-        <div {...handlers} className="rounded-lg p-3 bg-white shadow-sm">
-            <div className="flex items-start gap-3">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${color}`}>
-                    {icon}
-                </div>
-                <div className="flex-1">
-                    <div className="flex justify-between items-center">
-                        <span className="font-bold capitalize text-gray-800">
-                            {activity.activity_type.replace('_', ' ')}
-                        </span>
-                        <span className="text-sm text-gray-500 font-medium">{startTime}</span>
-                    </div>
-                    
-                    <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
-                        <Clock size={12}/>
-                        <span>
-                            {endTime ? `${startTime} - ${endTime}` : 'In progress...'}
-                            {duration && <span className="font-semibold"> ({duration})</span>}
-                        </span>
-                    </div>
-
-                    {activity.notes && <p className="text-sm text-gray-600 mt-1">{activity.notes}</p>}
-                    
-                    {activity.photo_url && (
-                        <div className="mt-2">
-                            <img src={activity.photo_url} alt="Activity" className="rounded-md max-h-48 object-cover border border-gray-200" />
-                        </div>
-                    )}
-                    
-                    {activity.logged_by && (
-                        <div className="text-xs text-gray-400 mt-2 flex items-center gap-1">
-                            <span className="font-medium">Logged by:</span> {activity.logged_by}
-                        </div>
-                    )}
-                </div>
-                <button onClick={() => setIsExpanded(!isExpanded)} className="text-gray-400 hover:text-gray-600 p-1">
-                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
-                </button>
+        <motion.div className="relative overflow-hidden rounded-lg mb-2" style={{ background }}>
+            <div className="absolute inset-0 flex items-start justify-between px-4 pt-4">
+                <motion.div style={{ opacity: opacityRight, scale: scaleRight }} className="text-green-600 font-medium flex items-center gap-2">
+                    <CheckCircle2 size={24} /> <span className="text-sm">End</span>
+                </motion.div>
+                <motion.div style={{ opacity: opacityLeft, scale: scaleLeft }} className="text-red-600 font-medium flex items-center gap-2">
+                    <span className="text-sm">Delete</span> <Trash2 size={24} />
+                </motion.div>
             </div>
-            <AnimatePresence>
-                {isExpanded && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                        animate={{ opacity: 1, height: 'auto', marginTop: '1rem' }}
-                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                    >
-                        {children}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </div>
+            <motion.div
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={{ left: 0.5, right: canEnd ? 0.5 : 0 }}
+                onDragEnd={handleDragEnd}
+                style={{ x }}
+                animate={controls}
+                className="bg-white rounded-lg p-3 relative z-10 shadow-sm border border-gray-100"
+            >
+                <div className="flex items-start gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xl ${color}`}>
+                        {icon}
+                    </div>
+                    <div className="flex-1">
+                        <div className="flex justify-between items-center">
+                            <span className="font-bold capitalize text-gray-800">
+                                {activity.activity_type.replace('_', ' ')}
+                            </span>
+                            <span className="text-sm text-gray-500 font-medium">{startTime}</span>
+                        </div>
+                        
+                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-2">
+                            <Clock size={12}/>
+                            <span>
+                                {endTime ? `${startTime} - ${endTime}` : 'In progress...'}
+                                {duration && <span className="font-semibold"> ({duration})</span>}
+                            </span>
+                        </div>
+
+                        {activity.notes && <p className="text-sm text-gray-600 mt-1">{activity.notes}</p>}
+                        
+                        {activity.photo_url && (
+                            <div className="mt-2">
+                                <img src={activity.photo_url} alt="Activity" className="rounded-md max-h-48 object-cover border border-gray-200" />
+                            </div>
+                        )}
+                        
+                        {activity.logged_by && (
+                            <div className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+                                <span className="font-medium">Logged by:</span> {activity.logged_by}
+                            </div>
+                        )}
+                    </div>
+                    <button onClick={() => setIsExpanded(!isExpanded)} className="text-gray-400 hover:text-gray-600 p-1">
+                        {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                    </button>
+                </div>
+                <AnimatePresence>
+                    {isExpanded && (
+                        <motion.div
+                            initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                            animate={{ opacity: 1, height: 'auto', marginTop: '1rem' }}
+                            exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                        >
+                            {children}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </motion.div>
+        </motion.div>
     );
 };
 
 
-export function ActivityList({ activities, onDelete, timelineDate, onClearTimelineDate }: ActivityListProps) {
+export function ActivityList({ activities, onDelete, onEndActivity, timelineDate, onClearTimelineDate }: ActivityListProps) {
   if (activities.length === 0) {
     return (
         <div className="text-center py-12 px-4 bg-white rounded-lg shadow-sm">
@@ -249,10 +328,10 @@ export function ActivityList({ activities, onDelete, timelineDate, onClearTimeli
                                     .filter(na => na.parent_activity_id === activity.id)
                                     .sort((a,b) => new Date(b.activity_time).getTime() - new Date(a.activity_time).getTime());
                                 return (
-                                    <WalkActivityItem key={activity.id} activity={activity} onDelete={onDelete}>
+                                    <WalkActivityItem key={activity.id} activity={activity} onDelete={onDelete} onEndActivity={onEndActivity}>
                                         {children.length > 0 ? (
                                             <div className="space-y-2">
-                                                {children.map(child => <ActivityItem key={child.id} activity={child} nested={true} onDelete={onDelete}/>)}
+                                                {children.map(child => <ActivityItem key={child.id} activity={child} nested={true} onDelete={onDelete} onEndActivity={onEndActivity} />)}
                                             </div>
                                         ) : (
                                             <div className="text-center text-sm text-gray-500 py-3">No other activities on this walk.</div>
@@ -260,7 +339,7 @@ export function ActivityList({ activities, onDelete, timelineDate, onClearTimeli
                                     </WalkActivityItem>
                                 );
                             } else {
-                                return <ActivityItem key={activity.id} activity={activity} nested={false} onDelete={onDelete} />;
+                                return <ActivityItem key={activity.id} activity={activity} nested={false} onDelete={onDelete} onEndActivity={onEndActivity} />;
                             }
                         })}
                     </div>
