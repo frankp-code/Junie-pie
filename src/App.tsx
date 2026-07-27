@@ -191,12 +191,39 @@ function App() {
           {(() => {
             switch (view) {
               case 'timeline':
-                return <ActivityList 
-                          activities={filteredActivities} 
-                          onDelete={handleDeleteActivity} 
-                          timelineDate={timelineDate}
-                          onClearTimelineDate={() => setTimelineDate(null)}
-                        />;
+                return (
+                  <div className="space-y-6">
+                    {!timelineDate && (
+                      <div className="bg-white rounded-xl shadow-sm p-4">
+                        <h3 className="text-sm font-semibold text-gray-700 mb-3">Quick Log</h3>
+                        <div className="grid grid-cols-4 gap-2">
+                          <button onClick={() => handleAddActivity(['wee'], new Date().toISOString(), '')} className="flex flex-col items-center justify-center p-2 rounded-lg border-2 border-gray-100 hover:border-pink-300 bg-gray-50 transition-colors">
+                            <span className="text-2xl mb-1">💧</span>
+                            <span className="text-xs font-medium text-gray-600">Wee</span>
+                          </button>
+                          <button onClick={() => handleAddActivity(['poo'], new Date().toISOString(), '')} className="flex flex-col items-center justify-center p-2 rounded-lg border-2 border-gray-100 hover:border-pink-300 bg-gray-50 transition-colors">
+                            <span className="text-2xl mb-1">💩</span>
+                            <span className="text-xs font-medium text-gray-600">Poo</span>
+                          </button>
+                          <button onClick={() => handleAddActivity(['walk'], new Date().toISOString(), '')} className="flex flex-col items-center justify-center p-2 rounded-lg border-2 border-gray-100 hover:border-pink-300 bg-gray-50 transition-colors">
+                            <span className="text-2xl mb-1">🦮</span>
+                            <span className="text-xs font-medium text-gray-600">Walk</span>
+                          </button>
+                          <button onClick={() => handleAddActivity(['sleep'], new Date().toISOString(), '')} className="flex flex-col items-center justify-center p-2 rounded-lg border-2 border-gray-100 hover:border-pink-300 bg-gray-50 transition-colors">
+                            <span className="text-2xl mb-1">😴</span>
+                            <span className="text-xs font-medium text-gray-600">Sleep</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    <ActivityList 
+                      activities={filteredActivities} 
+                      onDelete={handleDeleteActivity} 
+                      timelineDate={timelineDate}
+                      onClearTimelineDate={() => setTimelineDate(null)}
+                    />
+                  </div>
+                );
               case 'add':
                 return <ActivityForm 
                           onSubmit={handleAddActivity} 
