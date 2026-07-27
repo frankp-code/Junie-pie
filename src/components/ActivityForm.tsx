@@ -257,7 +257,7 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
                             id="activityTime"
                             value={activityTime}
                             onChange={(e) => setActivityTime(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-transparent bg-white text-center"
+                            className="w-full min-w-0 max-w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-transparent bg-white text-center"
                             required={!isMedActivitySelected}
                         />
                     </div>
@@ -268,7 +268,7 @@ export function ActivityForm({ onSubmit, onBack, date }: ActivityFormProps) {
                                 id="duration"
                                 value={duration || ''}
                                 onChange={(e) => setDuration(e.target.value ? parseInt(e.target.value) : undefined)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-transparent bg-white text-center"
+                                className="w-full min-w-0 max-w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-pink-500 focus:border-transparent bg-white text-center"
                             >
                                 <option value="">No duration</option>
                                 {durationOptions.map(option => (
