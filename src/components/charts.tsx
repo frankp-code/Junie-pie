@@ -1,4 +1,4 @@
-import { Bar, Line } from 'react-chartjs-2';
+import { Bar, Line, Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS, 
   CategoryScale, 
@@ -6,6 +6,7 @@ import {
   BarElement, 
   PointElement,
   LineElement,
+  ArcElement,
   Title, 
   Tooltip, 
   Legend
@@ -17,57 +18,68 @@ ChartJS.register(
   BarElement, 
   PointElement,
   LineElement,
+  ArcElement,
   Title, 
   Tooltip, 
   Legend
 );
 
-export const ActivityFrequencyChart = ({ data }) => {
+export const ActivityDistributionChart = ({ data }: { data: any }) => {
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'right' as const,
+      },
+    },
+    cutout: '65%',
+  };
+
+  return <Doughnut options={options} data={data} />;
+}
+
+export const SleepWalkChart = ({ data }: { data: any }) => {
   const options = {
     responsive: true,
     plugins: {
       legend: {
         position: 'top' as const,
       },
-      title: {
-        display: true,
-        text: 'Activity Frequency',
-      },
     },
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Hours'
+        }
+      }
+    }
   };
 
   return <Bar options={options} data={data} />;
 }
 
-export const ActivityTrendChart = ({ data }: { data: any }) => {
+export const PottyTrendChart = ({ data }: { data: any }) => {
   const options = {
     responsive: true,
     plugins: {
       legend: {
         position: 'top' as const,
       },
-      title: {
-        display: true,
-        text: 'Activity Trends (Last 7 Days)',
-      },
     },
-  };
-
-  return <Line options={options} data={data} />;
-}
-
-export const ActivityDurationChart = ({ data }: { data: any }) => {
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        position: 'top' as const,
+    scales: {
+      x: {
+        stacked: true,
       },
-      title: {
-        display: true,
-        text: 'Average Duration (Minutes)',
-      },
-    },
+      y: {
+        stacked: true,
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1
+        }
+      }
+    }
   };
 
   return <Bar options={options} data={data} />;
@@ -80,11 +92,22 @@ export const WeightChart = ({ data }: { data: any }) => {
       legend: {
         position: 'top' as const,
       },
-      title: {
-        display: true,
-        text: 'Weight Growth (kg)',
-      },
     },
+    scales: {
+      y: {
+        beginAtZero: false,
+      }
+    },
+    elements: {
+      line: {
+        tension: 0.3, // smooth curves
+        borderWidth: 3
+      },
+      point: {
+        radius: 4,
+        hoverRadius: 6
+      }
+    }
   };
 
   return <Line options={options} data={data} />;
