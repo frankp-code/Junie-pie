@@ -83,76 +83,67 @@ function App() {
         return;
     }
 
-    const ongoingWalk = activities.find(
-      (a) => a.activity_type === 'walk' && !a.end_time
-    );
-
     const newActivityTime = new Date(activityTime as string);
+    const batch = writeBatch(db);
 
-    const processActivityAddition = async (nestUnderWalk: boolean = false) => {
-      const batch = writeBatch(db);
-      let walkDocId: string | undefined = undefined;
+    const ongoingWalk = activities.find(a => a.activity_type === 'walk' && !a.end_time);
+    const ongoingSleep = activities.find(a => a.activity_type === 'sleep' && !a.end_time);
 
-      if (ongoingWalk && !nestUnderWalk) {
-        const walkRef = doc(db, 'puppy_activities', ongoingWalk.id);
-        batch.update(walkRef, { end_time: Timestamp.fromDate(newActivityTime) });
-      }
-      
-      const sortedActivityTypes = [...activityTypes].sort((a, b) => {
-        if (a === 'walk') return -1;
-        if (b === 'walk') return 1;
-        return 0;
-      });
-
-      for (const activityType of sortedActivityTypes) {
-        const newActivityRef = doc(collection(db, 'puppy_activities'));
-        const newActivity: any = {
-          activity_type: activityType,
-          activity_time: Timestamp.fromDate(newActivityTime),
-          notes,
-          created_at: Timestamp.now(),
-        };
-
-        if ((activityType === 'walk' || activityType === 'sleep') && endTime) {
-          newActivity.end_time = Timestamp.fromDate(new Date(endTime));
-        }
-
-        if (activityType === 'walk') {
-            walkDocId = newActivityRef.id;
-        }
-
-        if (nestUnderWalk && ongoingWalk) {
-            newActivity.parent_activity_id = ongoingWalk.id;
-        } else if (activityType !== 'walk' && walkDocId) {
-            newActivity.parent_activity_id = walkDocId;
-        }
-
-        batch.set(newActivityRef, newActivity);
-      }
-
-      await batch.commit();
-      await fetchActivities();
-      setView('timeline');
-    };
-
-    if (ongoingWalk && activityTypes.every(at => at !== 'sleep')) {
-      setConfirmation({
-        message: 'An activity is already in progress. Do you want to end the current walk?',
-        onConfirm: () => {
-          processActivityAddition(false);
-          setConfirmation(null);
-        },
-        onCancel: () => {
-          processActivityAddition(true);
-          setConfirmation(null);
-        },
-      });
-    } else if (ongoingWalk && activityTypes.includes('sleep')) {
-        await processActivityAddition(false);
+    // End ongoing sleep if new activity is walk, wee, poo, play or training
+    if (ongoingSleep && activityTypes.some(t => ['walk', 'wee', 'poo', 'play', 'training'].includes(t))) {
+      const sleepRef = doc(db, 'puppy_activities', ongoingSleep.id);
+      batch.update(sleepRef, { end_time: Timestamp.fromDate(newActivityTime) });
     }
-    else {
-      await processActivityAddition();
+
+    // End ongoing walk if new activity is sleep or another walk
+    if (ongoingWalk && activityTypes.some(t => ['sleep', 'walk'].includes(t))) {
+      const walkRef = doc(db, 'puppy_activities', ongoingWalk.id);
+      batch.update(walkRef, { end_time: Timestamp.fromDate(newActivityTime) });
     }
+
+    // End ongoing sleep if another sleep is added
+    if (ongoingSleep && activityTypes.includes('sleep')) {
+      const sleepRef = doc(db, 'puppy_activities', ongoingSleep.id);
+      batch.update(sleepRef, { end_time: Timestamp.fromDate(newActivityTime) });
+    }
+
+    const sortedActivityTypes = [...activityTypes].sort((a, b) => {
+      if (a === 'walk') return -1;
+      if (b === 'walk') return 1;
+      return 0;
+    });
+
+    let walkDocId: string | undefined = undefined;
+
+    for (const activityType of sortedActivityTypes) {
+      const newActivityRef = doc(collection(db, 'puppy_activities'));
+      const newActivity: any = {
+        activity_type: activityType,
+        activity_time: Timestamp.fromDate(newActivityTime),
+        notes,
+        created_at: Timestamp.now(),
+      };
+
+      if ((activityType === 'walk' || activityType === 'sleep') && endTime) {
+        newActivity.end_time = Timestamp.fromDate(new Date(endTime));
+      }
+
+      if (activityType === 'walk') {
+          walkDocId = newActivityRef.id;
+      }
+
+      if (activityType !== 'walk' && walkDocId) {
+          newActivity.parent_activity_id = walkDocId;
+      } else if (ongoingWalk && !activityTypes.includes('sleep') && !activityTypes.includes('walk') && (activityType === 'wee' || activityType === 'poo' || activityType === 'play' || activityType === 'training')) {
+          newActivity.parent_activity_id = ongoingWalk.id;
+      }
+
+      batch.set(newActivityRef, newActivity);
+    }
+
+    await batch.commit();
+    await fetchActivities();
+    setView('timeline');
   };
 
   const handleDeleteActivity = async (id: string) => {

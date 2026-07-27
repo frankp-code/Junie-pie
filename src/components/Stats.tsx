@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { PuppyActivity } from '../lib/types';
-import { ActivityFrequencyChart, ActivityTrendChart } from './charts';
+import { ActivityFrequencyChart, ActivityTrendChart, ActivityDurationChart } from './charts';
 
 interface StatsProps {
   activities: PuppyActivity[];
@@ -51,9 +51,41 @@ const processActivityTrend = (activities: PuppyActivity[]) => {
   };
 };
 
+const processActivityDuration = (activities: PuppyActivity[]) => {
+  const durationStats = activities.reduce((acc, activity) => {
+    if (activity.end_time) {
+      const durationMs = new Date(activity.end_time).getTime() - new Date(activity.activity_time).getTime();
+      const minutes = durationMs / (1000 * 60);
+      if (minutes > 0 && minutes < 1440) {
+        if (!acc[activity.activity_type]) {
+          acc[activity.activity_type] = { total: 0, count: 0 };
+        }
+        acc[activity.activity_type].total += minutes;
+        acc[activity.activity_type].count += 1;
+      }
+    }
+    return acc;
+  }, {} as { [key: string]: { total: number; count: number } });
+
+  const labels = Object.keys(durationStats);
+  const data = labels.map(label => Math.round(durationStats[label].total / durationStats[label].count));
+
+  return {
+    labels,
+    datasets: [
+      {
+        label: 'Avg Duration (mins)',
+        data,
+        backgroundColor: 'rgba(167, 139, 250, 0.6)',
+      },
+    ],
+  };
+};
+
 export function Stats({ activities }: StatsProps) {
   const frequencyData = useMemo(() => processActivityFrequency(activities), [activities]);
   const trendData = useMemo(() => processActivityTrend(activities), [activities]);
+  const durationData = useMemo(() => processActivityDuration(activities), [activities]);
 
   return (
     <div className="space-y-8">
@@ -65,6 +97,12 @@ export function Stats({ activities }: StatsProps) {
         <h2 className="text-xl font-bold mb-4">Activity Trend</h2>
         <ActivityTrendChart data={trendData} />
       </div>
+      {durationData.labels.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold mb-4">Activity Durations</h2>
+          <ActivityDurationChart data={durationData} />
+        </div>
+      )}
     </div>
   );
 }

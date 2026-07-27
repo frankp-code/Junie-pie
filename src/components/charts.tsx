@@ -39,7 +39,7 @@ export const ActivityFrequencyChart = ({ data }) => {
   return <Bar options={options} data={data} />;
 }
 
-export const ActivityTrendChart = ({ data }) => {
+export const ActivityTrendChart = ({ data }: { data: any }) => {
   const options = {
     responsive: true,
     plugins: {
@@ -54,4 +54,21 @@ export const ActivityTrendChart = ({ data }) => {
   };
 
   return <Line options={options} data={data} />;
+}
+
+export const ActivityDurationChart = ({ data }: { data: any }) => {
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: true,
+        text: 'Average Duration (Minutes)',
+      },
+    },
+  };
+
+  return <Bar options={options} data={data} />;
 }
